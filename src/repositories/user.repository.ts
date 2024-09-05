@@ -8,6 +8,9 @@ export class UserRepository extends DefaultCrudRepository<
   typeof User.prototype.id,
   UserRelations
 > {
+  findCredentials(email: string) {
+    throw new Error('Method not implemented.');
+  }
   constructor(
     @inject('datasources.localDB') dataSource: LocalDbDataSource,
   ) {
