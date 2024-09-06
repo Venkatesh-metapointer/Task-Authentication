@@ -1,41 +1,56 @@
-import {inject} from '@loopback/core';
-import {post, get, requestBody, response, param, getModelSchemaRef} from '@loopback/rest';
 import {TokenService} from '@loopback/authentication';
-import {SecurityBindings, UserProfile} from '@loopback/security';
+import {Credentials, TokenServiceBindings, UserServiceBindings} from '@loopback/authentication-jwt';
+import {inject} from '@loopback/core';
 import {repository} from '@loopback/repository';
-import {UserRepository} from '../repositories';
+import {
+  get,
+  getModelSchemaRef,
+  HttpErrors,
+  param,
+  post,
+  requestBody, response
+} from '@loopback/rest';
+import {SecurityBindings, UserProfile} from '@loopback/security';
 import {User} from '../models';
-import {TokenServiceBindings, UserServiceBindings} from '@loopback/authentication-jwt';
-import {Credentials, MyUserService} from '@loopback/authentication-jwt';
-import {HttpErrors} from '@loopback/rest';
+import {UserRepository} from '../repositories';
+import {MyUserService} from '../services';
 
 export class UserController {
   constructor(
     @inject(TokenServiceBindings.TOKEN_SERVICE)
     public jwtService: TokenService,
-    @inject(UserServiceBindings.USER_SERVICE)
+    @inject('services.MyUserService')
     public userService: MyUserService,
+    @repository(UserRepository)
+    protected userRepository: UserRepository,
     @inject(SecurityBindings.USER, {optional: true})
     public user: UserProfile,
-    @repository(UserRepository) protected userRepository: UserRepository,
-  ) {}
+  ) { }
 
+  /**
+   * User signup method.
+   * Creates a new user in the system after checking if the email already exists.
+   */
   @post('/signup')
   @response(200, {
     description: 'User model instance',
     content: {'application/json': {schema: getModelSchemaRef(User)}},
   })
-  async signup(@requestBody() user: Omit<User, 'id'>): Promise<User> {
+  async signup(@requestBody() userData: Omit<User, 'id'>): Promise<User> {
     try {
-      // Check if the user already exists
-      const existingUser = await this.userRepository.findOne({where: {email: user.email}});
+      console.log('signup ==============> ', userData)
+      // Check if a user with the provided email already exists
+      const existingUser = await this.userRepository.findOne({
+        where: {email: userData.email},
+      });
       if (existingUser) {
-        throw new HttpErrors.Conflict('User already exists');
+        throw new HttpErrors.Conflict('User with this email already exists');
       }
-      // Create new user
-      return await this.userRepository.create(user);
+
+      // Create a new user and save it to the database
+      return await this.userRepository.create(userData);
     } catch (error) {
-      throw new HttpErrors.BadRequest(`Error signing up user: ${error.message}`);
+      throw new HttpErrors.BadRequest(`Error during signup: ${error.message}`);
     }
   }
 
@@ -46,11 +61,19 @@ export class UserController {
   })
   async login(@requestBody() credentials: Credentials): Promise<{token: string}> {
     try {
+      // Verify the user's credentials (email and password)
       const user = await this.userService.verifyCredentials(credentials);
+
+      // Convert the user to a UserProfile object which will be used for token generation
       const userProfile = this.userService.convertToUserProfile(user);
+
+      // Generate a JWT token for the authenticated user
       const token = await this.jwtService.generateToken(userProfile);
+
+      // Return the generated JWT token
       return {token};
     } catch (error) {
+      // Throw an Unauthorized error if credentials are invalid
       throw new HttpErrors.Unauthorized(`Invalid credentials: ${error.message}`);
     }
   }
@@ -60,11 +83,23 @@ export class UserController {
     description: 'Current user profile',
     content: {'application/json': {schema: getModelSchemaRef(User)}},
   })
-  async whoami(@param.query.string('token') token: string): Promise<UserProfile> {
+  async whoami(@param.header.string('Authorization') authHeader: string): Promise<UserProfile> {
     try {
+      // Extract the token from the 'Authorization' header
+      const token = authHeader?.replace('Bearer ', '');
+
+      if (!token) {
+        // If no token is provided, throw an Unauthorized error
+        throw new HttpErrors.Unauthorized('Authorization header is missing or invalid');
+      }
+
+      // Verify the JWT token to extract the user profile
       const userProfile = await this.jwtService.verifyToken(token);
+
+      // Return the user profile associated with the valid token
       return userProfile;
     } catch (error) {
+      // Throw an Unauthorized error if token verification fails
       throw new HttpErrors.Unauthorized(`Invalid token: ${error.message}`);
     }
   }

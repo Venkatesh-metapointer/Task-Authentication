@@ -1,6 +1,6 @@
 import {Client} from '@loopback/testlab';
-import {AuthenticationApplication} from '../..';
 import {setupApplication} from './test-helper';
+import {AuthenticationApplication} from '../../application';
 
 describe('HomePage', () => {
   let app: AuthenticationApplication;

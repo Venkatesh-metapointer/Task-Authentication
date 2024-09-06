@@ -1,6 +1,6 @@
 import {Client, expect} from '@loopback/testlab';
-import {AuthenticationApplication} from '../..';
 import {setupApplication} from './test-helper';
+import {AuthenticationApplication} from '../../application';
 
 describe('PingController', () => {
   let app: AuthenticationApplication;

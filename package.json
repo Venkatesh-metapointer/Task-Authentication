@@ -12,6 +12,7 @@
     "node": "18 || 20 || 22"
   },
   "scripts": {
+    "work": "npm run rebuild && node .",
     "build": "lb-tsc",
     "build:watch": "lb-tsc --watch",
     "lint": "npm run eslint && npm run prettier:check",

@@ -1,9 +1,9 @@
-import {AuthenticationApplication} from '../..';
 import {
   createRestAppClient,
   givenHttpServerConfig,
   Client,
 } from '@loopback/testlab';
+import {AuthenticationApplication} from '../../application';
 
 export async function setupApplication(): Promise<AppWithClient> {
   const restConfig = givenHttpServerConfig({
